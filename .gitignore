@@ -13,3 +13,4 @@ vite.config.ts.timestamp-*
 .npmrc
 /.wrangler
 /b2
+/tmp
