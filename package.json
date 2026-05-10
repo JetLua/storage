@@ -1,0 +1,26 @@
+{
+  "name": "storage",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --watch src/app.ts "
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@iro/b2": "workspace:*",
+    "hono": "latest",
+    "cloudflare": "latest",
+    "nanoid": "latest",
+    "zod": "latest",
+    "@hono/zod-validator": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "latest"
+  },
+  "workspaces": {
+    "packages": [
+      "b2"
+    ]
+  }
+}
