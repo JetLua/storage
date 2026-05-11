@@ -25,3 +25,26 @@ export function error(data: unknown): [null, Error] {
 export function ok<T>(data: T): [T, null] {
   return [data, null]
 }
+
+export async function mime(path: string) {
+  let r
+  r = Bun.spawn([
+    'ffprobe', '-v', 'quiet', '-print_format', 'json',
+    '-show_format', '-show_streams', path
+  ])
+  // @ts-ignore
+  r = JSON.parse(await r.stdout.text()) as {
+    streams: Array<{
+      index: number
+      nb_frames: string
+      profile: string
+      disposition: [{}]
+    }>
+    format: {
+      duration?: string
+    }
+  }
+  const duration = +(r.format.duration ?? 0)
+  if (duration) return 'video'
+  return 'image'
+}
