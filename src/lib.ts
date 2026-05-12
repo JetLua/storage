@@ -48,3 +48,12 @@ export async function mime(path: string) {
   if (duration) return 'video'
   return 'image'
 }
+
+export async function sha1(file: Bun.BunFile, encoding: Bun.DigestEncoding = 'hex') {
+  const hasher = new Bun.CryptoHasher('sha1')
+  const stream = file.stream()
+  for await (const chunk of stream) {
+    hasher.update(chunk)
+  }
+  return hasher.digest(encoding)
+}

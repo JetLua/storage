@@ -1,9 +1,13 @@
 import {z} from 'zod'
 
-
-
-
 export namespace lf {
+  export const start = z.object({
+    /** bucket id */
+    bid: z.string().nonempty(),
+    /** prefix 文件夹 */
+    prefix: z.string().optional()
+  })
+
   export const part = z.object({
     file: z.instanceof(File),
     fid: z.string().nonempty(),
@@ -14,3 +18,7 @@ export namespace lf {
     fid: z.string().nonempty()
   })
 }
+
+export const q = z.object({
+  fid: z.string().nonempty()
+})
