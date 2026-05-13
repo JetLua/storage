@@ -60,7 +60,7 @@ app.patch('/lf/finish', zv('json', ship.lf.finish, async (_r, c) => {
   const task = tasks.get(fid)
   if (!task) throw httpErr.new(`${fid}: 不存在`)
   const files = await readdir(`tmp/${fid}`)
-  const ouput = createWriteStream(`tmp/${fid}/output`)
+  const ouput = createWriteStream(`tmp/${fid}/output`, {autoClose: false})
   files.sort((a, b) => +a - +b)
   for (const f of files) {
     await pipeline(
@@ -69,6 +69,7 @@ app.patch('/lf/finish', zv('json', ship.lf.finish, async (_r, c) => {
       {end: false}
     )
   }
+  ouput.close()
   // 完成之后后台进行转码
   task.status = 'finish'
   trancode(fid)
@@ -90,22 +91,56 @@ async function trancode(fid: string) {
   ], {cwd: `tmp/${fid}`})
   r = await r.exited
   if (r) return tasks.get(fid)!.err = '转码失败'
-  // 上传到b2
-  // 1. 获取上传地址
-  r = await b2.getUploadUrl(bid)
+  const fileName = `${prefix}/${fid}`
   const file = Bun.file(`tmp/${fid}/${fid}.${suffix}`)
-  // todo: 大文件分片
-  r = await b2.uploadFile({
-    file,
-    url: r.uploadUrl,
-    headers: {
-      authorization: r.authorizationToken,
-      'content-length': file.size,
-      'x-bz-file-name': `${prefix}/${fid}`,
-      'x-bz-content-sha1': await sha1(file)
-    }
-  })
-  console.log(r)
+  const size = file.size
+  const chunkSize = 5 * 1024 ** 2
+  const n = Math.ceil(size / chunkSize)
+  // 单文件上传
+  if (n < 2) {
+    // 上传到b2
+    // 1. 获取上传地址
+    r = await b2.getUploadUrl(bid)
+    r = await b2.uploadFile({
+      file,
+      url: r.uploadUrl,
+      headers: {
+        authorization: r.authorizationToken,
+        'content-length': file.size,
+        'x-bz-file-name': fileName,
+        'x-bz-content-sha1': await sha1(file)
+      }
+    })
+    console.log('single done', r)
+  } else {
+    const {fileId} = await b2.startLargeFile({bucketId: bid, fileName})
+
+    // todo: n太大 还需要拆分操作
+    r = await Promise.all(Array.from({length: n}, async (_, i) => {
+      const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize)
+      const {uploadUrl, authorizationToken} = await b2.getUploadPartUrl(fileId)
+
+      return b2.uploadPart({
+        file: chunk,
+        url: uploadUrl,
+        headers: {
+          authorization: authorizationToken,
+          'x-bz-content-sha1': await sha1(chunk),
+          'x-bz-part-number': i + 1,
+          'content-length': chunk.size
+        }
+      })
+    }))
+
+    console.log(r)
+
+    r = await b2.finishLargeFile({
+      fileId,
+      partSha1Array: r.map(item => item.contentSha1)
+    })
+
+    console.log('part done', r)
+  }
 }
 
 export default app

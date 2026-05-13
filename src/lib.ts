@@ -51,9 +51,6 @@ export async function mime(path: string) {
 
 export async function sha1(file: Bun.BunFile, encoding: Bun.DigestEncoding = 'hex') {
   const hasher = new Bun.CryptoHasher('sha1')
-  const stream = file.stream()
-  for await (const chunk of stream) {
-    hasher.update(chunk)
-  }
+  hasher.update(await file.arrayBuffer())
   return hasher.digest(encoding)
 }
