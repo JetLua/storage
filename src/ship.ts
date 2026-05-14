@@ -5,7 +5,7 @@ export namespace lf {
     /** bucket id */
     bid: z.string().nonempty(),
     /** prefix 文件夹 */
-    prefix: z.string().optional()
+    prefix: z.string().optional().default('')
   })
 
   export const part = z.object({

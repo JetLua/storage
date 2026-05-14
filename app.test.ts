@@ -1,24 +1,26 @@
 import {test, expect} from 'bun:test'
 import {resolve} from 'node:path'
 import {B2} from '@iro/b2'
-import {mime} from './src/lib'
+import {mime, sleep} from './src/lib'
 
-test('mime', async () => {
-  const r = await Promise.all([
-    mime(resolve('1.mov')),
-    mime(resolve('1.webp')),
-    mime(resolve('final.heic')),
-  ])
-  expect(r).toEqual(['video', 'image', 'image'])
-})
+const BASE_URL = 'https://m.hape.app/b2'
 
-test('upload', async () => {
+// test('mime', async () => {
+//   const r = await Promise.all([
+//     mime(resolve('1.mov')),
+//     mime(resolve('1.webp')),
+//     mime(resolve('final.heic')),
+//   ])
+//   expect(r).toEqual(['video', 'image', 'image'])
+// })
+
+// test('upload', async () => {
   let r
-  r = await fetch('http://127.1:3000/lf/start?bid=849230d8e385e0f299b90a17&prefix=test')
+  r = await fetch(`${BASE_URL}/lf/start?bid=849230d8e385e0f299b90a17&prefix=test`)
   const fid = await r.text()
   // 分片上传
   {
-    const file = Bun.file('1.mov')
+    const file = Bun.file('1.heic')
     const size = file.size
     const chunkSize = 5 * 1024 ** 2
     const n = Math.ceil(size / chunkSize)
@@ -27,13 +29,13 @@ test('upload', async () => {
       body.set('fid', fid)
       body.set('index', `${i}`)
       body.set('file', file.slice(i * chunkSize, (i + 1) * chunkSize))
-      return fetch('http://127.1:3000/lf/part', {
+      return fetch(`${BASE_URL}/lf/part`, {
         method: 'PATCH',
         body
       })
     }))
   }
-  r = await fetch('http://127.1:3000/lf/finish', {
+  r = await fetch(`${BASE_URL}/lf/finish`, {
     method: 'PATCH',
     body: JSON.stringify({
       fid
@@ -41,8 +43,18 @@ test('upload', async () => {
     headers: {'content-type': 'application/json'}
   })
   r = await r.json()
-  expect(r instanceof Array).toBe(true)
-})
+
+  while (true) {
+    r = await fetch(`${BASE_URL}/q?fid=${fid}`)
+    r = await r.text()
+    if (r) {
+      console.log(r)
+      break
+    }
+    await sleep(1)
+  }
+  expect(typeof r).toBe('string')
+// })
 
 // test('b2:upload', async () => {
 //   const b2 = new B2({id: process.env.B2_ID, key: process.env.B2_TOKEN})

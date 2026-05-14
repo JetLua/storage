@@ -54,3 +54,9 @@ export async function sha1(file: Bun.BunFile, encoding: Bun.DigestEncoding = 'he
   hasher.update(await file.arrayBuffer())
   return hasher.digest(encoding)
 }
+
+export async function sleep(t = 0) {
+  return new Promise(resolve => {
+    setTimeout(resolve, t * 1e3)
+  })
+}
